@@ -69,14 +69,14 @@ static void seed_rng(void)
 
 	if (mknod("/dev/urandom", S_IFCHR | 0644, makedev(1, 9)))
 		panic("mknod(/dev/urandom)");
-	fd = open("/dev/urandom", O_WRONLY);
-	if (fd < 0)
-		panic("open(urandom)");
-	for (int i = 0; i < 256; ++i) {
-		if (ioctl(fd, RNDADDENTROPY, &entropy) < 0)
-			panic("ioctl(urandom)");
-	}
-	close(fd);
+	//fd = open("/dev/urandom", O_WRONLY);
+	//if (fd < 0)
+	//	panic("open(urandom)");
+	//for (int i = 0; i < 256; ++i) {
+	//	if (ioctl(fd, RNDADDENTROPY, &entropy) < 0)
+	//		panic("ioctl(urandom)");
+	//}
+	//close(fd);
 }
 
 static void mount_filesystems(void)
@@ -257,17 +257,35 @@ static void check_leaks(void)
 	close(fd);
 }
 
+static void run_bash(void)
+{
+	int status;
+	pid_t pid;
+
+	pretty_message("[+] Running bash...");
+	pid = fork();
+	if (pid == -1)
+		panic("fork");
+	else if (pid == 0) {
+		execl("/bin/bash", "-l", NULL);
+		panic("exec");
+	}
+
+	if (waitpid(pid, &status, 0) < 0)
+		panic("waitpid");
+}
 int main(int argc, char *argv[])
 {
 	seed_rng();
 	ensure_console();
 	print_banner();
 	mount_filesystems();
-	kmod_selftests();
+	//kmod_selftests();
 	enable_logging();
-	clear_leaks();
-	launch_tests();
-	check_leaks();
+	//clear_leaks();
+	//launch_tests();
+	//check_leaks();
+	run_bash();
 	poweroff();
 	return 1;
 }

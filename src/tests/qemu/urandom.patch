@@ -1,0 +1,119 @@
+From ad8f2da2749e24ca038ea7d4bd96ce61df937ee1 Mon Sep 17 00:00:00 2001
+From: Naveen Nathan <naveen@lastninja.net>
+Date: Mon, 27 May 2019 10:05:01 +0000
+Subject: [PATCH] random: urandom reads block when CRNG is not initialized.
+
+Adds a compile-time option to ensure urandom reads block until
+the cryptographic random number generator (CRNG) is initialized.
+
+This fixes a long standing security issue, the so called boot-time
+entropy hole, where systems (particularly headless and embededd)
+generate cryptographic keys before the CRNG has been iniitalised,
+as exhibited in the work at https://factorable.net/.
+
+This is deliberately a compile-time option without a corresponding
+command line option to toggle urandom blocking behavior to prevent
+system builders shooting themselves in the foot by
+accidentally/deliberately/maliciously toggling the option off in
+production builds.
+
+Use with caution! This will hang systems which use an init program
+that relies on urandom at startup such as systemd and OpenWRT/LEDE
+(plus derivatives); this is due to kernel inactivity ceasing entropy
+collection, and therefore failing to initialize CRNG.
+
+Signed-off-by: Naveen Nathan <naveen@lastninja.net>
+
+diff --git a/drivers/char/Kconfig b/drivers/char/Kconfig
+index 466ebd84ad17..8cc63f8c8077 100644
+--- a/drivers/char/Kconfig
++++ b/drivers/char/Kconfig
+@@ -559,6 +559,21 @@ config ADI
+ 
+ endmenu
+ 
++config ALWAYS_SECURE_URANDOM
++	bool "Ensure /dev/urandom always produces secure randomness (EXPERIMENTAL)"
++	depends on EXPERIMENTAL
++	default n
++	help
++	  Ensure reads to /dev/urandom block until Linux CRNG is initialized.
++	  All reads after initialization are non-blocking. This protects
++	  readers of /dev/urandom from receiving insecure randomness on cold
++	  start when the entropy pool isn't initially filled.
++
++	  Use with caution! This will hang systems which use an init program
++	  that relies on urandom at startup such as systemd and OpenWRT/LEDE
++	  (plus derivatives); this is due to kernel inactivity ceasing entropy
++	  collection, and therefore failing to initialize CRNG.
++
+ config RANDOM_TRUST_CPU
+ 	bool "Trust the CPU manufacturer to initialize Linux's CRNG"
+ 	depends on X86 || S390 || PPC
+diff --git a/drivers/char/random.c b/drivers/char/random.c
+index 5d5ea4ce1442..b3282ed21470 100644
+--- a/drivers/char/random.c
++++ b/drivers/char/random.c
+@@ -1966,15 +1966,23 @@ urandom_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
+ 	static int maxwarn = 10;
+ 	int ret;
+ 
+-	if (!crng_ready() && maxwarn > 0) {
+-		maxwarn--;
+-		if (__ratelimit(&urandom_warning))
+-			printk(KERN_NOTICE "random: %s: uninitialized "
+-			       "urandom read (%zd bytes read)\n",
+-			       current->comm, nbytes);
+-		spin_lock_irqsave(&primary_crng.lock, flags);
+-		crng_init_cnt = 0;
+-		spin_unlock_irqrestore(&primary_crng.lock, flags);
++	if (!crng_ready()) {
++		if (IS_ENABLED(CONFIG_ALWAYS_SECURE_URANDOM)) {
++			if (file->f_flags & O_NONBLOCK)
++				return -EAGAIN;
++			ret = wait_for_random_bytes();
++			if (unlikely(ret))
++				return ret;
++		} else if (maxwarn > 0) {
++			maxwarn--;
++			if (__ratelimit(&urandom_warning))
++				pr_notice("random: %s: uninitialized "
++				       "urandom read (%zd bytes read)\n",
++				       current->comm, nbytes);
++			spin_lock_irqsave(&primary_crng.lock, flags);
++			crng_init_cnt = 0;
++			spin_unlock_irqrestore(&primary_crng.lock, flags);
++		}
+ 	}
+ 	nbytes = min_t(size_t, nbytes, INT_MAX >> (ENTROPY_SHIFT + 3));
+ 	ret = extract_crng_user(buf, nbytes);
+@@ -1997,6 +2005,19 @@ random_poll(struct file *file, poll_table * wait)
+ 	return mask;
+ }
+ 
++#if IS_ENABLED(CONFIG_ALWAYS_SECURE_URANDOM)
++static __poll_t
++urandom_poll(struct file *file, poll_table *wait)
++{
++	__poll_t mask = EPOLLOUT | EPOLLWRNORM;
++
++	poll_wait(file, &crng_init_wait, wait);
++	if (crng_ready())
++		mask |= EPOLLIN | EPOLLRDNORM;
++	return mask;
++}
++#endif
++
+ static int
+ write_pool(struct entropy_store *r, const char __user *buffer, size_t count)
+ {
+@@ -2113,6 +2134,9 @@ const struct file_operations random_fops = {
+ const struct file_operations urandom_fops = {
+ 	.read  = urandom_read,
+ 	.write = random_write,
++#if IS_ENABLED(CONFIG_ALWAYS_SECURE_URANDOM)
++	.poll  = urandom_poll,
++#endif
+ 	.unlocked_ioctl = random_ioctl,
+ 	.fasync = random_fasync,
+ 	.llseek = noop_llseek,

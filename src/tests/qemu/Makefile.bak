@@ -43,13 +43,6 @@ $(DISTFILES_PATH)/$(1):
 	flock -x $$@.lock -c '[ -f $$@ ] && exit 0; wget -O $$@ $(MIRROR)$(1) || wget -t inf --retry-on-http-error=404 -O $$@ $(2)$(1) || rm -f $$@'
 endef
 
-define download =
-$(DISTFILES_PATH)/$(1):
-	mkdir -p $(DISTFILES_PATH)
-	flock -x $$@.lock -c '[ -f $$@ ] && exit 0; wget -O $(2) || wget -t inf --retry-on-http-error=404 -O $$@ $(2) || rm -f $$@'
-endef
-
-
 ifeq ($(findstring -rc,$(KERNEL_VERSION)),)
 KERNEL_URL_DIRECTORY := https://cdn.kernel.org/pub/linux/kernel/v$(firstword $(subst ., ,$(KERNEL_VERSION:-debug=))).x/
 else
@@ -65,7 +58,7 @@ $(eval $(call tar_download,IPROUTE2,iproute2,5.1.0,.tar.gz,https://www.kernel.or
 $(eval $(call tar_download,IPTABLES,iptables,1.6.1,.tar.bz2,https://www.netfilter.org/projects/iptables/files/))
 $(eval $(call tar_download,NMAP,nmap,7.60,.tar.bz2,https://nmap.org/dist/))
 $(eval $(call tar_download,IPUTILS,iputils,s20161105,.tar.gz,https://github.com/iputils/iputils/archive/s20161105.tar.gz/#))
-$(eval $(call download,busybox-x86_64,https://busybox.net/downloads/binaries/1.28.1-defconfig-multiarch/busybox-x86_64))
+$(eval $(call tar_download,BUSYBOX,busybox,1.30.1,.tar.bz2,https://busybox.net/downloads/))
 
 export CFLAGS ?= -O3 -pipe
 export LDFLAGS ?=
@@ -231,7 +224,7 @@ USERSPACE_DEPS := $(MUSL_CC) $(BUILD_PATH)/include/.installed $(BUILD_PATH)/incl
 build: $(KERNEL_BZIMAGE)
 qemu: $(KERNEL_BZIMAGE)
 	rm -f $(BUILD_PATH)/result
-	qemu-system-$(QEMU_ARCH) \
+	timeout --foreground 20m qemu-system-$(QEMU_ARCH) \
 		-nodefaults \
 		-nographic \
 		-smp $(NR_CPUS) \
@@ -246,16 +239,11 @@ qemu: $(KERNEL_BZIMAGE)
 
 $(BUILD_PATH)/init-cpio-spec.txt:
 	mkdir -p $(BUILD_PATH)
-	echo "file /poll $(BUILD_PATH)/poll 755 0 0" > $@
-	echo "file /init $(BUILD_PATH)/init 755 0 0" >> $@
+	echo "file /init $(BUILD_PATH)/init 755 0 0" > $@
 	echo "file /init.sh $(PWD)/../netns.sh 755 0 0" >> $@
 	echo "dir /dev 755 0 0" >> $@
 	echo "nod /dev/console 644 0 0 c 5 1" >> $@
 	echo "dir /bin 755 0 0" >> $@
-	echo "dir /sbin 755 0 0" >> $@
-	echo "dir /usr 755 0 0" >> $@
-	echo "dir /usr/bin 755 0 0" >> $@
-	echo "dir /usr/sbin 755 0 0" >> $@
 	echo "file /bin/iperf3 $(IPERF_PATH)/src/iperf3 755 0 0" >> $@
 	echo "file /bin/wg $(BUILD_PATH)/tools/wg 755 0 0" >> $@
 	echo "file /bin/bash $(BASH_PATH)/bash 755 0 0" >> $@
@@ -264,7 +252,7 @@ $(BUILD_PATH)/init-cpio-spec.txt:
 	echo "file /bin/ping $(IPUTILS_PATH)/ping 755 0 0" >> $@
 	echo "file /bin/ncat $(NMAP_PATH)/ncat/ncat 755 0 0" >> $@
 	echo "file /bin/xtables-multi $(IPTABLES_PATH)/iptables/xtables-multi 755 0 0" >> $@
-	echo "file /bin/busybox $(BUILD_PATH)/busybox-x86_64 755 0 0" >> $@
+	echo "file /bin/busybox $(BUSYBOX_PATH)/busybox 755 0 0" >> $@
 	echo "slink /bin/iptables xtables-multi 777 0 0" >> $@
 	echo "slink /bin/ping6 ping 777 0 0" >> $@
 	echo "dir /lib 755 0 0" >> $@
@@ -291,9 +279,7 @@ always-pull: $(KERNEL_PATH)/.installed
 $(KERNEL_BZIMAGE): always-pull
 endif
 
-$(KERNEL_PATH)/.config: kernel.config arch/$(ARCH).config urandom.patch | $(KERNEL_PATH)/.installed
-	cp urandom.patch $(KERNEL_PATH)
-	cd $(KERNEL_PATH) && patch -p1 < urandom.patch
+$(KERNEL_PATH)/.config: kernel.config arch/$(ARCH).config | $(KERNEL_PATH)/.installed
 	cp kernel.config $(KERNEL_PATH)/minimal.config
 	printf 'CONFIG_NR_CPUS=$(NR_CPUS)\nCONFIG_INITRAMFS_SOURCE="$(BUILD_PATH)/init-cpio-spec.txt"\n' >> $(KERNEL_PATH)/minimal.config
 	cat arch/$(ARCH).config >> $(KERNEL_PATH)/minimal.config
@@ -301,9 +287,7 @@ $(KERNEL_PATH)/.config: kernel.config arch/$(ARCH).config urandom.patch | $(KERN
 	cd $(KERNEL_PATH) && ARCH=$(KERNEL_ARCH) scripts/kconfig/merge_config.sh -n .config minimal.config
 	$(if $(findstring -debug,$(KERNEL_VERSION)),cd $(KERNEL_PATH) && sed -i 's/^EXTRAVERSION =.*/EXTRAVERSION = -debug/' Makefile && ARCH=$(KERNEL_ARCH) scripts/kconfig/merge_config.sh -n .config $(PWD)/debug.config,)
 
-$(KERNEL_BZIMAGE): $(KERNEL_PATH)/.config $(BUILD_PATH)/init-cpio-spec.txt busybox-x86_64 $(MUSL_PATH)/lib/libc.so $(IPERF_PATH)/src/iperf3 $(BUILD_PATH)/tools/wg $(IPUTILS_PATH)/ping $(BASH_PATH)/bash $(IPROUTE2_PATH)/misc/ss $(IPROUTE2_PATH)/ip/ip $(IPTABLES_PATH)/iptables/xtables-multi $(NMAP_PATH)/ncat/ncat $(BUILD_PATH)/init $(BUILD_PATH)/poll ../netns.sh $(WIREGUARD_SOURCES) $(TOOLS_SOURCES)
-	echo 'CONFIG_EXPERIMENTAL=y' >> $(KERNEL_PATH)/.config
-	echo 'CONFIG_ALWAYS_SECURE_URANDOM=y' >> $(KERNEL_PATH)/.config
+$(KERNEL_BZIMAGE): $(KERNEL_PATH)/.config $(BUILD_PATH)/init-cpio-spec.txt $(MUSL_PATH)/lib/libc.so $(BUSYBOX_PATH)/busybox $(IPERF_PATH)/src/iperf3 $(BUILD_PATH)/tools/wg $(IPUTILS_PATH)/ping $(BASH_PATH)/bash $(IPROUTE2_PATH)/misc/ss $(IPROUTE2_PATH)/ip/ip $(IPTABLES_PATH)/iptables/xtables-multi $(NMAP_PATH)/ncat/ncat $(BUILD_PATH)/init ../netns.sh $(WIREGUARD_SOURCES) $(TOOLS_SOURCES)
 	LOCALVERSION="" $(MAKE) -C $(KERNEL_PATH) ARCH=$(KERNEL_ARCH) CROSS_COMPILE=$(CROSS_COMPILE) CC="$(NOPIE_GCC)"
 
 $(BUILD_PATH)/include/linux/.installed: | $(KERNEL_PATH)/.config
@@ -358,12 +342,6 @@ $(BUILD_PATH)/init: init.c | $(USERSPACE_DEPS)
 	mkdir -p $(BUILD_PATH)
 	$(MUSL_CC) -o $@ $(CFLAGS) $(LDFLAGS) -std=gnu11 $<
 	$(STRIP) -s $@
-
-$(BUILD_PATH)/poll: poll.c | $(USERSPACE_DEPS)
-	mkdir -p $(BUILD_PATH)
-	$(MUSL_CC) -o $@ $(CFLAGS) $(LDFLAGS) -std=gnu11 $<
-	$(STRIP) -s $@
-
 
 $(IPUTILS_PATH)/.installed: $(IPUTILS_TAR)
 	mkdir -p $(BUILD_PATH)
@@ -420,8 +398,15 @@ $(NMAP_PATH)/ncat/ncat: | $(NMAP_PATH)/.installed $(USERSPACE_DEPS)
 	$(MAKE) -C $(NMAP_PATH) build-ncat
 	$(STRIP) -s $@
 
-busybox-x86_64: | $(DISTFILES_PATH)/busybox-x86_64
-	cp $(DISTFILES_PATH)/busybox-x86_64 $(BUILD_PATH)
+$(BUSYBOX_PATH)/.installed: $(BUSYBOX_TAR)
+	mkdir -p $(BUILD_PATH)
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
+	touch $@
+
+$(BUSYBOX_PATH)/busybox: | $(BUSYBOX_PATH)/.installed $(USERSPACE_DEPS)
+	cd $(BUSYBOX_PATH) && $(MAKE) defconfig
+	$(MAKE) -C $(BUSYBOX_PATH)
+	$(STRIP) -s $@
 
 clean:
 	rm -rf $(BUILD_PATH)

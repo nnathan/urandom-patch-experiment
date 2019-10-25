@@ -1,0 +1,34 @@
+diff -uNr /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/drivers/char/random.c ./drivers/char/random.c
+--- /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/drivers/char/random.c	2019-05-16 17:35:40.000000000 +0000
++++ ./drivers/char/random.c	2019-05-27 02:29:40.128755127 +0000
+@@ -785,6 +785,14 @@
+ }
+ early_param("random.trust_cpu", parse_trust_cpu);
+ 
++static bool urandom_can_block = false;
++
++static int __init parse_urandom_can_block(char *arg)
++{
++	return kstrtobool(arg, &urandom_can_block);
++}
++early_param("random.urandom_can_block", parse_urandom_can_block);
++
+ static void crng_initialize(struct crng_state *crng)
+ {
+ 	int		i;
+@@ -1887,10 +1895,12 @@
+ 
+ 	if (!crng_ready() && maxwarn > 0) {
+ 		maxwarn--;
+-		if (__ratelimit(&urandom_warning))
++		if (__ratelimit(&urandom_warning)) {
+ 			printk(KERN_NOTICE "random: %s: uninitialized "
+-			       "urandom read (%zd bytes read)\n",
+-			       current->comm, nbytes);
++			       "urandom read (%zd bytes read) "
++			       "urandom_can_block=%d\n",
++			       current->comm, nbytes, urandom_can_block ? 1 : 0);
++		}
+ 		spin_lock_irqsave(&primary_crng.lock, flags);
+ 		crng_init_cnt = 0;
+ 		spin_unlock_irqrestore(&primary_crng.lock, flags);

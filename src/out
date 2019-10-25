@@ -1,0 +1,381 @@
+make -C tests/qemu
+mkdir -p /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3
+flock -s /home/naveen/WireGuard/src/tests/qemu/distfiles/linux-5.1.3.tar.gz.lock tar --strip-components=1 -C /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3 -xf /home/naveen/WireGuard/src/tests/qemu/distfiles/linux-5.1.3.tar.gz
+sed -i "/^if INET\$/a source \"net/wireguard/Kconfig\"" /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/net/Kconfig
+sed -i "/^obj-\$(CONFIG_NETFILTER).*+=/a obj-\$(CONFIG_WIREGUARD) += wireguard/" /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/net/Makefile
+ln -sfT /home/naveen/WireGuard/src /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/net/wireguard
+touch /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/.installed
+cp urandom.patch /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3
+cd /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3 && patch -p1 < urandom.patch
+patching file drivers/char/Kconfig
+patching file drivers/char/random.c
+Hunk #1 succeeded at 1885 (offset -81 lines).
+Hunk #2 succeeded at 1924 (offset -81 lines).
+Hunk #3 succeeded at 2053 (offset -81 lines).
+cp kernel.config /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/minimal.config
+printf 'CONFIG_NR_CPUS=4\nCONFIG_INITRAMFS_SOURCE="/home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/init-cpio-spec.txt"\n' >> /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/minimal.config
+cat arch/x86_64.config >> /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/minimal.config
+make -C /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3 ARCH=x86_64 allnoconfig
+  HOSTCC  scripts/basic/fixdep
+  HOSTCC  scripts/kconfig/conf.o
+  HOSTCC  scripts/kconfig/confdata.o
+  HOSTCC  scripts/kconfig/expr.o
+  LEX     scripts/kconfig/lexer.lex.c
+  YACC    scripts/kconfig/parser.tab.h
+  HOSTCC  scripts/kconfig/lexer.lex.o
+  YACC    scripts/kconfig/parser.tab.c
+  HOSTCC  scripts/kconfig/parser.tab.o
+  HOSTCC  scripts/kconfig/preprocess.o
+  HOSTCC  scripts/kconfig/symbol.o
+  HOSTLD  scripts/kconfig/conf
+scripts/kconfig/conf  --allnoconfig Kconfig
+#
+# configuration written to .config
+#
+cd /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3 && ARCH=x86_64 scripts/kconfig/merge_config.sh -n .config minimal.config
+Using .config as base
+Merging minimal.config
+Value of CONFIG_NET is redefined by fragment minimal.config:
+Previous value: # CONFIG_NET is not set
+New value: CONFIG_NET=y
+
+Value of CONFIG_MULTIUSER is redefined by fragment minimal.config:
+Previous value: # CONFIG_MULTIUSER is not set
+New value: CONFIG_MULTIUSER=y
+
+Value of CONFIG_TTY is redefined by fragment minimal.config:
+Previous value: # CONFIG_TTY is not set
+New value: CONFIG_TTY=y
+
+Value of CONFIG_BINFMT_ELF is redefined by fragment minimal.config:
+Previous value: # CONFIG_BINFMT_ELF is not set
+New value: CONFIG_BINFMT_ELF=y
+
+Value of CONFIG_BINFMT_SCRIPT is redefined by fragment minimal.config:
+Previous value: # CONFIG_BINFMT_SCRIPT is not set
+New value: CONFIG_BINFMT_SCRIPT=y
+
+Value of CONFIG_VIRTUALIZATION is redefined by fragment minimal.config:
+Previous value: # CONFIG_VIRTUALIZATION is not set
+New value: CONFIG_VIRTUALIZATION=y
+
+Value of CONFIG_HYPERVISOR_GUEST is redefined by fragment minimal.config:
+Previous value: # CONFIG_HYPERVISOR_GUEST is not set
+New value: CONFIG_HYPERVISOR_GUEST=y
+
+Value of CONFIG_PRINTK is redefined by fragment minimal.config:
+Previous value: # CONFIG_PRINTK is not set
+New value: CONFIG_PRINTK=y
+
+Value of CONFIG_KALLSYMS is redefined by fragment minimal.config:
+Previous value: # CONFIG_KALLSYMS is not set
+New value: CONFIG_KALLSYMS=y
+
+Value of CONFIG_BUG is redefined by fragment minimal.config:
+Previous value: # CONFIG_BUG is not set
+New value: CONFIG_BUG=y
+
+Value of CONFIG_EMBEDDED is redefined by fragment minimal.config:
+Previous value: CONFIG_EMBEDDED=y
+New value: CONFIG_EMBEDDED=n
+
+Value of CONFIG_BASE_FULL is redefined by fragment minimal.config:
+Previous value: # CONFIG_BASE_FULL is not set
+New value: CONFIG_BASE_FULL=y
+
+Value of CONFIG_FUTEX is redefined by fragment minimal.config:
+Previous value: # CONFIG_FUTEX is not set
+New value: CONFIG_FUTEX=y
+
+Value of CONFIG_SHMEM is redefined by fragment minimal.config:
+Previous value: # CONFIG_SHMEM is not set
+New value: CONFIG_SHMEM=y
+
+Value of CONFIG_SPARSEMEM_VMEMMAP is redefined by fragment minimal.config:
+Previous value: # CONFIG_SPARSEMEM_VMEMMAP is not set
+New value: CONFIG_SPARSEMEM_VMEMMAP=y
+
+Value of CONFIG_SMP is redefined by fragment minimal.config:
+Previous value: # CONFIG_SMP is not set
+New value: CONFIG_SMP=y
+
+Value of CONFIG_PREEMPT is redefined by fragment minimal.config:
+Previous value: # CONFIG_PREEMPT is not set
+New value: CONFIG_PREEMPT=y
+
+Value of CONFIG_NO_HZ is redefined by fragment minimal.config:
+Previous value: # CONFIG_NO_HZ is not set
+New value: CONFIG_NO_HZ=y
+
+Value of CONFIG_NO_HZ_IDLE is redefined by fragment minimal.config:
+Previous value: # CONFIG_NO_HZ_IDLE is not set
+New value: CONFIG_NO_HZ_IDLE=y
+
+Value of CONFIG_HZ_PERIODIC is redefined by fragment minimal.config:
+Previous value: CONFIG_HZ_PERIODIC=y
+New value: CONFIG_HZ_PERIODIC=n
+
+Value of CONFIG_HIGH_RES_TIMERS is redefined by fragment minimal.config:
+Previous value: # CONFIG_HIGH_RES_TIMERS is not set
+New value: CONFIG_HIGH_RES_TIMERS=y
+
+Value of CONFIG_ARCH_RANDOM is redefined by fragment minimal.config:
+Previous value: # CONFIG_ARCH_RANDOM is not set
+New value: CONFIG_ARCH_RANDOM=y
+
+Value of CONFIG_FILE_LOCKING is redefined by fragment minimal.config:
+Previous value: # CONFIG_FILE_LOCKING is not set
+New value: CONFIG_FILE_LOCKING=y
+
+Value of CONFIG_POSIX_TIMERS is redefined by fragment minimal.config:
+Previous value: # CONFIG_POSIX_TIMERS is not set
+New value: CONFIG_POSIX_TIMERS=y
+
+Value of CONFIG_DEVTMPFS is redefined by fragment minimal.config:
+Previous value: # CONFIG_DEVTMPFS is not set
+New value: CONFIG_DEVTMPFS=y
+
+Value of CONFIG_PROC_FS is redefined by fragment minimal.config:
+Previous value: # CONFIG_PROC_FS is not set
+New value: CONFIG_PROC_FS=y
+
+Value of CONFIG_SYSFS is redefined by fragment minimal.config:
+Previous value: # CONFIG_SYSFS is not set
+New value: CONFIG_SYSFS=y
+
+Value of CONFIG_CONSOLE_LOGLEVEL_DEFAULT is redefined by fragment minimal.config:
+Previous value: CONFIG_CONSOLE_LOGLEVEL_DEFAULT=7
+New value: CONFIG_CONSOLE_LOGLEVEL_DEFAULT=15
+
+Value of CONFIG_BLK_DEV_INITRD is redefined by fragment minimal.config:
+Previous value: # CONFIG_BLK_DEV_INITRD is not set
+New value: CONFIG_BLK_DEV_INITRD=y
+
+Value of CONFIG_LEGACY_VSYSCALL_NONE is redefined by fragment minimal.config:
+Previous value: # CONFIG_LEGACY_VSYSCALL_NONE is not set
+New value: CONFIG_LEGACY_VSYSCALL_NONE=y
+
+Value of CONFIG_PANIC_ON_OOPS is redefined by fragment minimal.config:
+Previous value: # CONFIG_PANIC_ON_OOPS is not set
+New value: CONFIG_PANIC_ON_OOPS=y
+
+Value of CONFIG_BUG_ON_DATA_CORRUPTION is redefined by fragment minimal.config:
+Previous value: # CONFIG_BUG_ON_DATA_CORRUPTION is not set
+New value: CONFIG_BUG_ON_DATA_CORRUPTION=y
+
+Value of CONFIG_SOFTLOCKUP_DETECTOR is redefined by fragment minimal.config:
+Previous value: # CONFIG_SOFTLOCKUP_DETECTOR is not set
+New value: CONFIG_SOFTLOCKUP_DETECTOR=y
+
+Value of CONFIG_HARDLOCKUP_DETECTOR is redefined by fragment minimal.config:
+Previous value: # CONFIG_HARDLOCKUP_DETECTOR is not set
+New value: CONFIG_HARDLOCKUP_DETECTOR=y
+
+Value of CONFIG_WQ_WATCHDOG is redefined by fragment minimal.config:
+Previous value: # CONFIG_WQ_WATCHDOG is not set
+New value: CONFIG_WQ_WATCHDOG=y
+
+Value of CONFIG_DETECT_HUNG_TASK is redefined by fragment minimal.config:
+Previous value: # CONFIG_DETECT_HUNG_TASK is not set
+New value: CONFIG_DETECT_HUNG_TASK=y
+
+Value of CONFIG_PANIC_TIMEOUT is redefined by fragment minimal.config:
+Previous value: CONFIG_PANIC_TIMEOUT=0
+New value: CONFIG_PANIC_TIMEOUT=-1
+
+Value of CONFIG_STACKTRACE is redefined by fragment minimal.config:
+Previous value: # CONFIG_STACKTRACE is not set
+New value: CONFIG_STACKTRACE=y
+
+Value of CONFIG_EARLY_PRINTK is redefined by fragment minimal.config:
+Previous value: # CONFIG_EARLY_PRINTK is not set
+New value: CONFIG_EARLY_PRINTK=y
+
+Value of CONFIG_NR_CPUS is redefined by fragment minimal.config:
+Previous value: CONFIG_NR_CPUS=1
+New value: CONFIG_NR_CPUS=4
+
+Value of CONFIG_CMDLINE_BOOL is redefined by fragment minimal.config:
+Previous value: # CONFIG_CMDLINE_BOOL is not set
+New value: CONFIG_CMDLINE_BOOL=y
+
+Value of CONFIG_FRAME_WARN is redefined by fragment minimal.config:
+Previous value: CONFIG_FRAME_WARN=2048
+New value: CONFIG_FRAME_WARN=1280
+
+scripts/kconfig/conf  --allnoconfig Kconfig
+./.tmp.config.fn54XRb0Kp:1020:warning: override: PREEMPT changes choice state
+./.tmp.config.fn54XRb0Kp:1037:warning: override: LEGACY_VSYSCALL_NONE changes choice state
+#
+# configuration written to .config
+#
+Value requested for CONFIG_BROKEN_ON_SMP not in final .config
+Requested value:  CONFIG_BROKEN_ON_SMP=y
+Actual value:     
+
+Value requested for CONFIG_PREEMPT_NONE not in final .config
+Requested value:  CONFIG_PREEMPT_NONE=y
+Actual value:     # CONFIG_PREEMPT_NONE is not set
+
+Value requested for CONFIG_TINY_RCU not in final .config
+Requested value:  CONFIG_TINY_RCU=y
+Actual value:     
+
+Value requested for CONFIG_TINY_SRCU not in final .config
+Requested value:  CONFIG_TINY_SRCU=y
+Actual value:     
+
+Value requested for CONFIG_X86_FEATURE_NAMES not in final .config
+Requested value:  # CONFIG_X86_FEATURE_NAMES is not set
+Actual value:     CONFIG_X86_FEATURE_NAMES=y
+
+Value requested for CONFIG_NR_CPUS_RANGE_BEGIN not in final .config
+Requested value:  CONFIG_NR_CPUS_RANGE_BEGIN=1
+Actual value:     CONFIG_NR_CPUS_RANGE_BEGIN=2
+
+Value requested for CONFIG_NR_CPUS_RANGE_END not in final .config
+Requested value:  CONFIG_NR_CPUS_RANGE_END=1
+Actual value:     CONFIG_NR_CPUS_RANGE_END=512
+
+Value requested for CONFIG_NR_CPUS_DEFAULT not in final .config
+Requested value:  CONFIG_NR_CPUS_DEFAULT=1
+Actual value:     CONFIG_NR_CPUS_DEFAULT=64
+
+Value requested for CONFIG_UP_LATE_INIT not in final .config
+Requested value:  CONFIG_UP_LATE_INIT=y
+Actual value:     
+
+Value requested for CONFIG_LEGACY_VSYSCALL_EMULATE not in final .config
+Requested value:  CONFIG_LEGACY_VSYSCALL_EMULATE=y
+Actual value:     # CONFIG_LEGACY_VSYSCALL_EMULATE is not set
+
+Value requested for CONFIG_BASE_SMALL not in final .config
+Requested value:  CONFIG_BASE_SMALL=1
+Actual value:     CONFIG_BASE_SMALL=0
+
+Value requested for CONFIG_INLINE_SPIN_UNLOCK_IRQ not in final .config
+Requested value:  CONFIG_INLINE_SPIN_UNLOCK_IRQ=y
+Actual value:     
+
+Value requested for CONFIG_INLINE_READ_UNLOCK not in final .config
+Requested value:  CONFIG_INLINE_READ_UNLOCK=y
+Actual value:     
+
+Value requested for CONFIG_INLINE_READ_UNLOCK_IRQ not in final .config
+Requested value:  CONFIG_INLINE_READ_UNLOCK_IRQ=y
+Actual value:     
+
+Value requested for CONFIG_INLINE_WRITE_UNLOCK not in final .config
+Requested value:  CONFIG_INLINE_WRITE_UNLOCK=y
+Actual value:     
+
+Value requested for CONFIG_INLINE_WRITE_UNLOCK_IRQ not in final .config
+Requested value:  CONFIG_INLINE_WRITE_UNLOCK_IRQ=y
+Actual value:     
+
+Value requested for CONFIG_NEED_PER_CPU_KM not in final .config
+Requested value:  CONFIG_NEED_PER_CPU_KM=y
+Actual value:     
+
+Value requested for CONFIG_CRYPTO not in final .config
+Requested value:  # CONFIG_CRYPTO is not set
+Actual value:     CONFIG_CRYPTO=y
+
+Value requested for CONFIG_PANIC_ON_OOPS_VALUE not in final .config
+Requested value:  CONFIG_PANIC_ON_OOPS_VALUE=0
+Actual value:     CONFIG_PANIC_ON_OOPS_VALUE=1
+
+Value requested for CONFIG_DEBUG_LIST not in final .config
+Requested value:  # CONFIG_DEBUG_LIST is not set
+Actual value:     CONFIG_DEBUG_LIST=y
+
+Value requested for CONFIG_NF_CONNTRACK_IPV4 not in final .config
+Requested value:  CONFIG_NF_CONNTRACK_IPV4=y
+Actual value:     
+
+Value requested for CONFIG_NF_NAT_IPV4 not in final .config
+Requested value:  CONFIG_NF_NAT_IPV4=y
+Actual value:     
+
+Value requested for CONFIG_VDSO not in final .config
+Requested value:  CONFIG_VDSO=y
+Actual value:     
+
+Value requested for CONFIG_EMBEDDED not in final .config
+Requested value:  CONFIG_EMBEDDED=n
+Actual value:     # CONFIG_EMBEDDED is not set
+
+Value requested for CONFIG_NO_HZ_FULL not in final .config
+Requested value:  CONFIG_NO_HZ_FULL=n
+Actual value:     # CONFIG_NO_HZ_FULL is not set
+
+Value requested for CONFIG_HZ_PERIODIC not in final .config
+Requested value:  CONFIG_HZ_PERIODIC=n
+Actual value:     # CONFIG_HZ_PERIODIC is not set
+
+Value requested for CONFIG_GDB_SCRIPTS not in final .config
+Requested value:  CONFIG_GDB_SCRIPTS=y
+Actual value:     
+
+Value requested for CONFIG_ALWAYS_SECURE_URANDOM not in final .config
+Requested value:  CONFIG_ALWAYS_SECURE_URANDOM=y
+Actual value:     
+
+Value requested for CONFIG_EXPERIMENTAL not in final .config
+Requested value:  CONFIG_EXPERIMENTAL=y
+Actual value:     
+
+cp /home/naveen/WireGuard/src/tests/qemu/distfiles/busybox-x86_64 /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64
+echo 'CONFIG_EXPERIMENTAL=y' >> /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/.config
+echo 'CONFIG_ALWAYS_SECURE_URANDOM=y' >> /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3/.config
+LOCALVERSION="" make -C /home/naveen/WireGuard/src/tests/qemu/../../../qemu-build/x86_64/linux-5.1.3 ARCH=x86_64 CROSS_COMPILE= CC="gcc -fno-PIE"
+scripts/kconfig/conf  --syncconfig Kconfig
+  SYSTBL  arch/x86/include/generated/asm/syscalls_32.h
+  SYSHDR  arch/x86/include/generated/asm/unistd_32_ia32.h
+  SYSHDR  arch/x86/include/generated/asm/unistd_64_x32.h
+  SYSTBL  arch/x86/include/generated/asm/syscalls_64.h
+  SYSHDR  arch/x86/include/generated/uapi/asm/unistd_32.h
+  SYSHDR  arch/x86/include/generated/uapi/asm/unistd_64.h
+  SYSHDR  arch/x86/include/generated/uapi/asm/unistd_x32.h
+  HOSTCC  arch/x86/tools/relocs_32.o
+  HOSTCC  arch/x86/tools/relocs_64.o
+  HOSTCC  arch/x86/tools/relocs_common.o
+  HOSTLD  arch/x86/tools/relocs
+  UPD     include/config/kernel.release
+  WRAP    arch/x86/include/generated/uapi/asm/bpf_perf_event.h
+  WRAP    arch/x86/include/generated/uapi/asm/poll.h
+  WRAP    arch/x86/include/generated/uapi/asm/socket.h
+  WRAP    arch/x86/include/generated/asm/dma-contiguous.h
+  WRAP    arch/x86/include/generated/asm/early_ioremap.h
+  WRAP    arch/x86/include/generated/asm/export.h
+  WRAP    arch/x86/include/generated/asm/mcs_spinlock.h
+  WRAP    arch/x86/include/generated/asm/mm-arch-hooks.h
+  UPD     include/generated/uapi/linux/version.h
+  UPD     include/generated/utsrelease.h
+  HOSTCC  scripts/kallsyms
+  HOSTCC  scripts/sortextable
+  CC      scripts/mod/empty.o
+  HOSTCC  scripts/mod/mk_elfconfig
+  MKELF   scripts/mod/elfconfig.h
+  HOSTCC  scripts/mod/modpost.o
+  CC      scripts/mod/devicetable-offsets.s
+  UPD     scripts/mod/devicetable-offsets.h
+  HOSTCC  scripts/mod/file2alias.o
+  HOSTCC  scripts/mod/sumversion.o
+  HOSTLD  scripts/mod/modpost
+  CC      kernel/bounds.s
+  UPD     include/generated/bounds.h
+  UPD     include/generated/timeconst.h
+  CC      arch/x86/kernel/asm-offsets.s
+  UPD     include/generated/asm-offsets.h
+  CALL    scripts/checksyscalls.sh
+  CALL    scripts/atomic/check-atomics.sh
+  DESCEND  objtool
+  HOSTCC   /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/fixdep.o
+  HOSTLD   /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/fixdep-in.o
+  LINK     /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/fixdep
+  CC       /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/exec-cmd.o
+  CC       /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/help.o
+  CC       /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/pager.o
+  CC       /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/parse-options.o
+  CC       /home/naveen/WireGuard/qemu-build/x86_64/linux-5.1.3/tools/objtool/run-command.o
